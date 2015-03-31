@@ -3,9 +3,9 @@ package org.aksw.tsoru.dedupe;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.Set;
 
+import org.apache.log4j.Logger;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
@@ -21,10 +21,16 @@ import com.hp.hpl.jena.rdf.model.StmtIterator;
  *
  */
 public class RDFConverter {
+	
+	private static Logger logger = Logger.getLogger(RDFConverter.class);
 
 	public static void convert(JSONObject root, String namespace, String outpath) throws IOException {
 
+		logger.info("Creating Jena model...");
+		
 		Model m = ModelFactory.createDefaultModel();
+		
+		Resource clazz = m.createResource(namespace + "Flat");
 
 		JSONObject hits = (JSONObject) root.get("hits");
 		JSONArray hitsArray = (JSONArray) hits.get("hits");
@@ -36,7 +42,7 @@ public class RDFConverter {
 					.get("entry");
 
 			String uri = (String) entry.get("portalUrl");
-			Resource r = ResourceFactory.createResource(uri);
+			Resource r = m.createResource(uri, clazz);
 			
 			Set<?> keys = entry.keySet();
 			for(Object key : keys) {
@@ -54,16 +60,20 @@ public class RDFConverter {
 				}
 			}
 
-			// TODO remove me
-			if(i==30) break;
 		}
+		
+		logger.debug("Listing statements...");
 		
 		StmtIterator it = m.listStatements();
 		while(it.hasNext())
-			System.out.println(it.next());
+			logger.debug(it.next());
 		
+		logger.info("Writing model...");
+
 		BufferedWriter out = new BufferedWriter(new FileWriter(outpath));
 		m.write(out, "N-TRIPLES");
+		
+		logger.info("Write finished.");
 		
 	}
 
